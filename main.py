@@ -152,11 +152,11 @@ class RoleChoiceView(discord.ui.View):
     async def support_choice(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_message("اختر شخصية السبورت الخاصة بك:", view=SupportView(), ephemeral=True)
 
-# نافذة إدخال الاسم
+# نافذة إدخال الاسم (تم تعديل المثال ليصبح subaru)
 class GameNameModal(discord.ui.Modal, title='ادخل اسمك'):
     game_name = discord.ui.TextInput(
         label='اكتب اسمك في اللعبة',
-        placeholder='مثال: TWENTY',
+        placeholder='subaru',
         required=True,
         max_length=50
     )
@@ -214,7 +214,6 @@ async def on_ready():
 
 @bot.command(name='setup')
 async def setup_panel(ctx):
-    # التحقق من الصلاحية أو الآيديات أيضاً عند أمر الإعداد إذا رغبت
     if ctx.author.id not in ALLOWED_ADMINS and not ctx.author.guild_permissions.administrator:
         await ctx.send("❌ لا تمتلك صلاحية استخدام هذا الأمر.")
         return

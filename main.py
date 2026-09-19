@@ -200,7 +200,7 @@ class FarmView(discord.ui.View):
         super().__init__(timeout=None)
         self.admin_name = admin_name
 
-    @discord.ui.button(label='الفريق الأول', style=discord.ButtonStyle.danger, emoji='🔴', custom_id="farm_team_one_btn_v4")
+    @discord.ui.button(label='الفريق الأول', style=discord.ButtonStyle.danger, emoji='🔴', custom_id="farm_team_one_btn_v5")
     async def team_one(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not farm_status["is_open"]:
             await interaction.response.send_message("🔒 عذراً، الفارم مغلق حالياً!", ephemeral=True)
@@ -210,7 +210,7 @@ class FarmView(discord.ui.View):
             return
         await interaction.response.send_modal(GameNameModal("team_1", self.admin_name))
 
-    @discord.ui.button(label='الفريق الثاني', style=discord.ButtonStyle.primary, emoji='🔵', custom_id="farm_team_two_btn_v4")
+    @discord.ui.button(label='الفريق الثاني', style=discord.ButtonStyle.primary, emoji='🔵', custom_id="farm_team_two_btn_v5")
     async def team_two(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not farm_status["is_open"]:
             await interaction.response.send_message("🔒 عذراً، الفارم مغلق حالياً!", ephemeral=True)
@@ -220,7 +220,7 @@ class FarmView(discord.ui.View):
             return
         await interaction.response.send_modal(GameNameModal("team_2", self.admin_name))
 
-    @discord.ui.button(label='إدارة الفارم (قفل/فتح)', style=discord.ButtonStyle.gray, emoji='⚙️', custom_id="farm_admin_control_btn_v4")
+    @discord.ui.button(label='إدارة الفارم (قفل/فتح)', style=discord.ButtonStyle.gray, emoji='⚙️', custom_id="farm_admin_control_btn_v5")
     async def admin_control(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not has_admin_role(interaction.user):
             await interaction.response.send_message("❌ ليس لديك صلاحية!", ephemeral=True)
@@ -282,14 +282,12 @@ async def kashf_panel(ctx):
         await ctx.send("❌ لا تمتلك صلاحية استخدام هذا الأمر.")
         return
 
-    # حذف الرسالة القديمة إن وجدت لتجنب تكرار اللوحات القديمة
     if farm_status["setup_message"]:
         try:
             await farm_status["setup_message"].delete()
         except Exception:
             pass
 
-    # حذف أمر !كشف نفسه ليبقى الشات نظيفاً
     try:
         await ctx.message.delete()
     except Exception:
@@ -298,8 +296,46 @@ async def kashf_panel(ctx):
     admin_name = ctx.author.display_name
     embed = update_main_embed(admin_name)
     
-    # إرسال اللوحة في أحدث رسالة بالأسفل
     msg = await ctx.send(embed=embed, view=FarmView(admin_name))
     farm_status["setup_message"] = msg
+
+@bot.command(name='ازاله')
+async def remove_user(ctx, member: discord.Member = None):
+    if not has_admin_role(ctx.author) and not ctx.author.guild_permissions.administrator:
+        await ctx.send("❌ لا تمتلك صلاحية استخدام هذا الأمر.")
+        return
+
+    if not member:
+        await ctx.send("❌ يرجى الإشارة إلى العضو المراد إزالته، مثال: `!ازاله @اسم_العضو`")
+        return
+
+    removed = False
+    # البحث عن العضو في الفريقين وحذفه من أي رول مسجل فيه
+    for team_key in ["team_1", "team_2"]:
+        for role_key in ["tank", "dps", "support"]:
+            initial_len = len(teams_data[team_key][role_key])
+            teams_data[team_key][role_key] = [
+                item for item in teams_data[team_key][role_key] if item["user"].id != member.id
+            ]
+            if len(teams_data[team_key][role_key]) < initial_len:
+                removed = True
+
+    if removed:
+        # تحديث اللوحة الأساسية إذا كانت موجودة
+        if farm_status["setup_message"]:
+            try:
+                admin_name = ctx.author.display_name
+                await farm_status["setup_message"].edit(embed=update_main_embed(admin_name))
+            except Exception:
+                pass
+        await ctx.send(f"✅ تمت إزالة العضو {member.mention} من القائمة بنجاح.")
+    else:
+        await ctx.send(f"⚠️ العضو {member.mention} غير مسجل في أي فريق أساساً.")
+
+    # مسح أمر المشرف ليبقى الشات نظيفاً
+    try:
+        await ctx.message.delete()
+    except Exception:
+        pass
 
 bot.run(TOKEN)

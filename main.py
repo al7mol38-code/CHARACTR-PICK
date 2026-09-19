@@ -93,7 +93,7 @@ class CharacterSelect(discord.ui.Select):
         selected_char = self.values[0]
         user = interaction.user
 
-        # حذف اللاعب من أي رول سابق داخل نفس الفريق لكي لا يسجل في رولين معاً
+        # حذف اللاعب من أي رول سابق داخل نفس الفريق لمنع تكرار التسجيل برولين
         for r_key in ["tank", "dps", "support"]:
             teams_data[self.team_key][r_key] = [
                 item for item in teams_data[self.team_key][r_key] if item["user"].id != user.id
@@ -113,38 +113,37 @@ class CharacterSelect(discord.ui.Select):
 
 class DPSGroupSelectView(discord.ui.View):
     def __init__(self, team_key, admin_name):
-        super().__init__()
+        super().__init__(timeout=180)
         self.team_key = team_key
         self.admin_name = admin_name
 
     @discord.ui.button(label='قائمة الـ DPS (1)', style=discord.ButtonStyle.danger, emoji='⚔️')
     async def dps_group_1(self, interaction: discord.Interaction, button: discord.ui.Button):
-        view = discord.ui.View()
+        view = discord.ui.View(timeout=180)
         view.add_item(CharacterSelect(DPS_CHARS_1, self.team_key, "dps", self.admin_name))
         await interaction.response.send_message("اختر من القائمة الأولى:", view=view, ephemeral=True)
 
     @discord.ui.button(label='قائمة الـ DPS (2)', style=discord.ButtonStyle.danger, emoji='⚔️')
     async def dps_group_2(self, interaction: discord.Interaction, button: discord.ui.Button):
-        view = discord.ui.View()
+        view = discord.ui.View(timeout=180)
         view.add_item(CharacterSelect(DPS_CHARS_2, self.team_key, "dps", self.admin_name))
         await interaction.response.send_message("اختر من القائمة الثانية:", view=view, ephemeral=True)
 
 class RoleChoiceView(discord.ui.View):
     def __init__(self, team_key, admin_name):
-        super().__init__()
+        super().__init__(timeout=180)
         self.team_key = team_key
         self.admin_name = admin_name
 
     @discord.ui.button(label='تانك', style=discord.ButtonStyle.primary, emoji='🛡️')
     async def tank_choice(self, interaction: discord.Interaction, button: discord.ui.Button):
         if len(teams_data[self.team_key]["tank"]) >= 2:
-            # التحقق إذا كان المستخدم مسجلاً أساساً في التانك ولاحقاً أراد تبديل الشخصية
             is_already_tank = any(item["user"].id == interaction.user.id for item in teams_data[self.team_key]["tank"])
             if not is_already_tank:
                 await interaction.response.send_message("❌ عذراً، رول التانك مكتمل في هذا الفريق!", ephemeral=True)
                 return
 
-        view = discord.ui.View()
+        view = discord.ui.View(timeout=180)
         view.add_item(CharacterSelect(TANK_CHARS, self.team_key, "tank", self.admin_name))
         await interaction.response.send_message("اختر شخصية التانك:", view=view, ephemeral=True)
 
@@ -166,7 +165,7 @@ class RoleChoiceView(discord.ui.View):
                 await interaction.response.send_message("❌ عذراً، رول الهيلر مكتمل في هذا الفريق!", ephemeral=True)
                 return
 
-        view = discord.ui.View()
+        view = discord.ui.View(timeout=180)
         view.add_item(CharacterSelect(SUPPORT_CHARS, self.team_key, "support", self.admin_name))
         await interaction.response.send_message("اختر شخصية السبورت:", view=view, ephemeral=True)
 
@@ -195,7 +194,7 @@ class FarmView(discord.ui.View):
         super().__init__(timeout=None)
         self.admin_name = admin_name
 
-    @discord.ui.button(label='الفريق الأول', style=discord.ButtonStyle.danger, emoji='🔴', custom_id="team_one_btn")
+    @discord.ui.button(label='الفريق الأول', style=discord.ButtonStyle.danger, emoji='🔴', custom_id="farm_team_one_btn")
     async def team_one(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not farm_status["is_open"]:
             await interaction.response.send_message("🔒 عذراً، الفارم مغلق حالياً!", ephemeral=True)
@@ -205,7 +204,7 @@ class FarmView(discord.ui.View):
             return
         await interaction.response.send_modal(GameNameModal("team_1", self.admin_name))
 
-    @discord.ui.button(label='الفريق الثاني', style=discord.ButtonStyle.primary, emoji='🔵', custom_id="team_two_btn")
+    @discord.ui.button(label='الفريق الثاني', style=discord.ButtonStyle.primary, emoji='🔵', custom_id="farm_team_two_btn")
     async def team_two(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not farm_status["is_open"]:
             await interaction.response.send_message("🔒 عذراً، الفارم مغلق حالياً!", ephemeral=True)
@@ -215,7 +214,7 @@ class FarmView(discord.ui.View):
             return
         await interaction.response.send_modal(GameNameModal("team_2", self.admin_name))
 
-    @discord.ui.button(label='إدارة الفارم (قفل/فتح)', style=discord.ButtonStyle.gray, emoji='⚙️', custom_id="admin_control_btn")
+    @discord.ui.button(label='إدارة الفارم (قفل/فتح)', style=discord.ButtonStyle.gray, emoji='⚙️', custom_id="farm_admin_control_btn")
     async def admin_control(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id not in ALLOWED_ADMINS:
             await interaction.response.send_message("❌ ليس لديك صلاحية!", ephemeral=True)
@@ -229,13 +228,20 @@ class FarmView(discord.ui.View):
                 pass
         await interaction.response.send_message("تم تغيير حالة الفارم بنجاح.", ephemeral=True)
 
+@bot.event
+async def on_ready():
+    print(f'Logged in as {bot.user.name}')
+    # تسجيل الـ View بشكل دائم لمنع مشاكل تفاعل الأزرار عند إعادة التشغيل
+    if not any(isinstance(v, FarmView) for v in bot.persistent_views):
+        bot.add_view(FarmView("مشرف"))
+
 @bot.command(name='setup')
 async def setup_panel(ctx):
     if ctx.author.id not in ALLOWED_ADMINS and not ctx.author.guild_permissions.administrator:
         await ctx.send("❌ لا تمتلك صلاحية استخدام هذا الأمر.")
         return
 
-    # تصفير البيانات بالكامل عند كتابة السيت أب
+    # تصفير البيانات عند عمل سيت أب جديد
     global teams_data
     teams_data = {
         "team_1": {"tank": [], "dps": [], "support": []},
@@ -243,7 +249,7 @@ async def setup_panel(ctx):
     }
     farm_status["is_open"] = True
 
-    # محاولة حذف الرسالة السابقة إن وجدت لتفادي التكرار
+    # حذف الرسالة القديمة إن وجدت لمنع التكرار
     if farm_status["setup_message"]:
         try:
             await farm_status["setup_message"].delete()
@@ -253,7 +259,7 @@ async def setup_panel(ctx):
     admin_name = ctx.author.display_name
     embed = update_main_embed(admin_name)
     
-    # إرسال لوحة واحدة فقط جديدة
+    # إرسال رسالة واحدة نظيفة فقط
     msg = await ctx.send(embed=embed, view=FarmView(admin_name))
     farm_status["setup_message"] = msg
 

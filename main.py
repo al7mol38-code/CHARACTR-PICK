@@ -93,7 +93,6 @@ class CharacterSelect(discord.ui.Select):
         selected_char = self.values[0]
         user = interaction.user
 
-        # التحقق مما إذا كان اللاعب قد سجل مسبقاً في نفس الرول داخل هذا الفريق
         for item in teams_data[self.team_key][self.role_key]:
             if item["user"].id == user.id:
                 await interaction.response.send_message("❌ لقد مسجّلت مسبقاً في هذا الرول ولا يمكنك التسجيل فيه مرة أخرى!", ephemeral=True)
@@ -137,7 +136,6 @@ class RoleChoiceView(discord.ui.View):
             await interaction.response.send_message("❌ عذراً، رول التانك مكتمل في هذا الفريق!", ephemeral=True)
             return
         
-        # تحقق إضافي لمنع نفس الشخص من تسجيل نفس الرول
         for item in teams_data[self.team_key]["tank"]:
             if item["user"].id == interaction.user.id:
                 await interaction.response.send_message("❌ لقد قمت بالتسجيل في رول التانك مسبقاً!", ephemeral=True)
@@ -236,6 +234,14 @@ async def setup_panel(ctx):
     if ctx.author.id not in ALLOWED_ADMINS and not ctx.author.guild_permissions.administrator:
         await ctx.send("❌ لا تمتلك صلاحية استخدام هذا الأمر.")
         return
+
+    # تصفير الأسماء والفرق بالكامل عند تنفيذ أمر السيت أب
+    global teams_data
+    teams_data = {
+        "team_1": {"tank": [], "dps": [], "support": []},
+        "team_2": {"tank": [], "dps": [], "support": []}
+    }
+    farm_status["is_open"] = True
 
     admin_name = ctx.author.display_name
     embed = update_main_embed(admin_name)

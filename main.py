@@ -9,6 +9,11 @@ intents.message_content = True
 intents.voice_states = True  # مهم جداً للتحقق من الروم الصوتي
 bot = commands.Bot(command_prefix='!', intents=intents)
 
+# حالة الفارم العامة (مفتوح بشكل افتراضي)
+farm_status = {
+    "is_open": True
+}
+
 # 1. شخصيات التانك (Tanks)
 TANK_IMAGES = {
     "كابتن أمريكا (Captain America)": "https://cdn.discordapp.com/attachments/1550919639532306482/1550920249812058172/video_60.mp4?ex=6ab0168a&is=6aaec50a&hm=71c7b6d6c2165af7c9c051e746ecbb841abb1a6e7391ef656ea534d49c664573&",
@@ -35,7 +40,7 @@ DPS_IMAGES = {
     "سايلوك (Psylocke)": "https://cdn.discordapp.com/attachments/1533463914816471221/1550890981530927204/EB0A2341-C253-42AC-B096-FB294E214445.gif?ex=6aaffb48&is=6aaea9c8&hm=52bfd57858dceeb371bbb9ce66c98cabe15007266e241ae4cae00c79b1abb9df&",
     "ماجيك (Magik)": "https://cdn.discordapp.com/attachments/1533463914816471221/1550890925386109149/DF1660CB-E8A6-498D-B088-CB72C551CF38.gif?ex=6aaffb3a&is=6aaea9ba&hm=4056a6407f012faadca77183cb727a154d763cdad977c51675a4282abf449162&",
     "هيلا (Hela)": "https://cdn.discordapp.com/attachments/1533463914816471221/1550890877541425243/B164DA73-C02F-499D-9EBF-31AE1C5F5C01.gif?ex=6aaffb2f&is=6aaea9af&hm=aee20e36dafc19a1344f4dc7010780c70408b5df96858c69119c792a2639d290&",
-    " / سكارليت ويتش (Scarlet Witch)": "https://cdn.discordapp.com/attachments/1533463914816471221/1550890982977970387/2CF8119E-8CEF-4A9F-AFB0-E244948ADDF5.gif?ex=6aaffb48&is=6aaea9c8&hm=45535a9874af34d27dfbb048033e28a5a9d8e7d984e4341688eaf7b13ee108a7&",
+    "الساحرة المستديرة / سكارليت ويتش (Scarlet Witch)": "https://cdn.discordapp.com/attachments/1533463914816471221/1550890982977970387/2CF8119E-8CEF-4A9F-AFB0-E244948ADDF5.gif?ex=6aaffb48&is=6aaea9c8&hm=45535a9874af34d27dfbb048033e28a5a9d8e7d984e4341688eaf7b13ee108a7&",
     "المعاقب (The Punisher)": "https://cdn.discordapp.com/attachments/1533463914816471221/1550891017253949550/B2C63E17-D371-43D6-99A2-7A0270911302.gif?ex=6aaffb50&is=6aaea9d0&hm=601304b37a19bbadbcb478d9cadc58cbc6e5a1651d7676ded03a36941e6826dc&",
     "بليد (Blade)": "https://cdn.discordapp.com/attachments/1533463914816471221/1550890828472389702/C0999967-3CA3-4FBF-B912-61AE57634DBF.gif?ex=6aaffb23&is=6aaea9a3&hm=adf0871424d1d91a48615321b9c5652c5f753b0eacc78368cb704e419c8991eb&",
     "النمر الأسود (Black Panther)": "https://cdn.discordapp.com/attachments/1533463914816471221/1550890827977326623/5657C85D-3C47-42C0-BA6E-8BFA11F53A4E.gif?ex=6aaffb23&is=6aaea9a3&hm=c4b46435a352f6bc252b8de28f5d646b5c09fca546b21093c9d01cb366628626&",
@@ -45,147 +50,4 @@ DPS_IMAGES = {
     "ستار-لورد (Star-Lord)": "https://cdn.discordapp.com/attachments/1533463914816471221/1550891017803145306/573109C8-A4D0-47E5-ABA5-51FCC0B8F1A7.gif?ex=6aaffb50&is=6aaea9d0&hm=0778932b3692ffce7a324de695abd7ac850f12c99eca5571b56b77bbe3aeb321&",
     "جندي الشتاء / باكي (Winter Soldier)": "https://cdn.discordapp.com/attachments/1533463914816471221/1550891020475179068/5F184C06-BBF2-4C16-9AC9-CF8E9AED87D3.gif?ex=6aaffb51&is=6aaea9d1&hm=f87e3801ea0ff9cc9c6f88526455458b7d05470f570708278909aa52db5465d8&",
     "الشعلة البشرية (Human Torch)": "https://cdn.discordapp.com/attachments/1533463914816471221/1550890878380277901/301659CD-DF46-4D71-BC68-41C204A301A1.gif?ex=6aaffb2f&is=6aaea9af&hm=ecffd3232b9d4b5de8ec434719163b2d623230cae2407bf5c4ce607375401d23&",
-    "مستر فانتاستيك (Mister Fantastic)": "https://cdn.discordapp.com/attachments/1533463914816471221/1550890930129739860/1FD41BC4-8F23-4951-BCB4-FC60C60DB749.gif?ex=6aaffb3b&is=6aaea9bb&hm=eb50cfc19894a8157f137d659f2005b5e5e3bb930c862284dd52c7a07acd9983&",
-    "نامور (Namor)": "https://cdn.discordapp.com/attachments/1533463914816471221/1550890980788404266/68DA63DA-CAB9-4F2B-B8C5-168FB9997A53.gif?ex=6aaffb47&is=6aaea9c7&hm=ff2e69140c5ea27626e7c76a71cd426975532caf58d2b28dcc7ec28dd8ae3f85&",
-    "ستورم (Storm)": "https://cdn.discordapp.com/attachments/1533463914816471221/1550890984123015258/4B8C6A01-C055-4F4F-A142-CC45FABE5379.gif?ex=6aaffb48&is=6aaea9c8&hm=2cd343532c528199ffa038c18804374e22b652c7bc76aa6632e75f0bdf9af339&",
-    "القبضة الحديدية (Iron Fist)": "https://cdn.discordapp.com/attachments/1533463914816471221/1550890922823389294/EFE4C990-DA3B-4F3A-BBFF-E29C0CA5C617.gif?ex=6aaffb3a&is=6aaea9ba&hm=314d03942ba48f4ef0b57df91f8831f8d7ade4107498d548eaa8117390955ce4&",
-    "فتاة السنجاب (Squirrel Girl)": "https://cdn.discordapp.com/attachments/1533463914816471221/1550890983317839892/C3319BE8-8018-43EB-B38A-54DF60884DB3.gif?ex=6aaffb48&is=6aaea9c8&hm=77a3b063adb9737dfb5f4fb8901a3e21417131eb5dc22505521d20efd43550b8&",
-    "القطة السوداء (Black Cat)": "https://cdn.discordapp.com/attachments/1533463914816471221/1550890831005749319/6A675ED2-564E-4AE9-BF63-1F6D019D622A.gif?ex=6aaffb24&is=6aaea9a4&hm=929044d47ca634a7076398680164853143598803ee0c1e7fe6d995ad3755ab68&",
-    "سايكلوبس (Cyclops)": "https://cdn.discordapp.com/attachments/1533463914816471221/1550890830485528596/47995E8B-47F8-4E7D-A6A7-BD0FCC4F933D.gif?ex=6aaffb24&is=6aaea9a4&hm=89228be6f4f7c7d5cc92e48ef86601346cd4b5b33b268ad2b4510c58a32dfd57&",
-    "ديرديفيل (Daredevil)": "https://cdn.discordapp.com/attachments/1533463914816471221/1550926700097966170/5FFA03FC-7EF1-4B35-88F5-822A2D6F2130.gif?ex=6ab01c8c&is=6aaecb0c&hm=35e33efbdbacb316848e010cef8c740280a50674139a9a6c441a3fa10dcea431&",
-    "إلسا بلودستون (Elsa Bloodstone)": "https://cdn.discordapp.com/attachments/1533463914816471221/1550890873099915335/4C7FF137-6C5D-4FF5-9EF9-101CB54960C5.gif?ex=6aaffb2e&is=6aaea9ae&hm=39a21a586cb01479c94056204814c21a0c866c1f15f231428c0bd62cab13069b&"
-}
-
-# 3. شخصيات السبورت (Support)
-SUPPORT_IMAGES = {
-    "ديدبول": "رابط_صورة",
-    "المرأة الخفية": "رابط_صورة",
-    "كلوك اند داقر": "رابط_صورة",
-    "لونا سنو": "رابط_صورة",
-    "لوكي": "رابط_صورة",
-    "مانتس": "رابط_صورة",
-    "راكون": "رابط_صورة",
-    "وايت فوكس": "رابط_صورة",
-    "جوبيلي": "رابط_صورة",
-    "آدم وارلوك": "رابط_صورة"
-}
-
-# قوائم الاختيار (Select Menus) لكل رول
-class TankSelect(discord.ui.Select):
-    def __init__(self):
-        options = [discord.SelectOption(label=name[:100]) for name in TANK_IMAGES.keys()]
-        super().__init__(placeholder="اختر شخصية التانك...", min_values=1, max_values=1, options=options)
-
-    async def callback(self, interaction: discord.Interaction):
-        await interaction.response.send_message(f"لقد اخترت شخصية التانك: **{self.values[0]}** ✅", ephemeral=True)
-
-class TankView(discord.ui.View):
-    def __init__(self):
-        super().__init__()
-        self.add_item(TankSelect())
-
-class DPSSelect(discord.ui.Select):
-    def __init__(self):
-        options = [discord.SelectOption(label=name[:100]) for name in DPS_IMAGES.keys()]
-        super().__init__(placeholder="اختر شخصية الـ DPS...", min_values=1, max_values=1, options=options)
-
-    async def callback(self, interaction: discord.Interaction):
-        await interaction.response.send_message(f"لقد اخترت شخصية الـ DPS: **{self.values[0]}** ✅", ephemeral=True)
-
-class DPSView(discord.ui.View):
-    def __init__(self):
-        super().__init__()
-        self.add_item(DPSSelect())
-
-class SupportSelect(discord.ui.Select):
-    def __init__(self):
-        options = [discord.SelectOption(label=name[:100]) for name in SUPPORT_IMAGES.keys()]
-        super().__init__(placeholder="اختر شخصية السبورت...", min_values=1, max_values=1, options=options)
-
-    async def callback(self, interaction: discord.Interaction):
-        await interaction.response.send_message(f"لقد اخترت شخصية السبورت: **{self.values[0]}** ✅", ephemeral=True)
-
-class SupportView(discord.ui.View):
-    def __init__(self):
-        super().__init__()
-        self.add_item(SupportSelect())
-
-# أزرار اختيار الرول بعد إدخال الاسم
-class RoleChoiceView(discord.ui.View):
-    def __init__(self):
-        super().__init__()
-
-    @discord.ui.button(label='تانك', style=discord.ButtonStyle.primary, emoji='🛡️')
-    async def tank_choice(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("اختر شخصية التانك الخاصة بك:", view=TankView(), ephemeral=True)
-
-    @discord.ui.button(label='دي بي إس', style=discord.ButtonStyle.danger, emoji='⚔️')
-    async def dps_choice(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("اختر شخصية الـ DPS الخاصة بك:", view=DPSView(), ephemeral=True)
-
-    @discord.ui.button(label='سبورت', style=discord.ButtonStyle.success, emoji='💉')
-    async def support_choice(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("اختر شخصية السبورت الخاصة بك:", view=SupportView(), ephemeral=True)
-
-# نافذة إدخال الاسم
-class GameNameModal(discord.ui.Modal, title='ادخل اسمك'):
-    game_name = discord.ui.TextInput(
-        label='اكتب اسمك في اللعبة',
-        placeholder='مثال: TWENTY',
-        required=True,
-        max_length=50
-    )
-
-    async def on_submit(self, interaction: discord.Interaction):
-        name = self.game_name.value
-        await interaction.response.send_message(
-            f'تم تسجيل اسمك: **{name}** بنجاح! الآن اختر رولك:',
-            view=RoleChoiceView(),
-            ephemeral=True
-        )
-
-# الأزرار الرئيسية للفريق الأول والثاني
-class FarmView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-
-    @discord.ui.button(label='الفريق الاول', style=discord.ButtonStyle.danger, emoji='🔴')
-    async def team_one(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.user.voice:
-            await interaction.response.send_message("❌ يجب أن تكون في الروم الصوتي للمشاركة في الفارم!", ephemeral=True)
-            return
-        await interaction.response.send_modal(GameNameModal())
-
-    @discord.ui.button(label='الفريق الثاني', style=discord.ButtonStyle.primary, emoji='🔵')
-    async def team_two(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.user.voice:
-            await interaction.response.send_message("❌ يجب أن تكون في الروم الصوتي للمشاركة في الفارم!", ephemeral=True)
-            return
-        await interaction.response.send_modal(GameNameModal())
-
-    @discord.ui.button(label='تراجع', style=discord.ButtonStyle.secondary)
-    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("تم التراجع عن الاختيار.", ephemeral=True)
-
-    @discord.ui.button(label='تأكيد الفارم', style=discord.ButtonStyle.success, emoji='✅')
-    async def confirm_farm(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("تم تأكيد الفارم بنجاح! 🎉", ephemeral=True)
-
-@bot.event
-async def on_ready():
-    print(f'تم تسجيل الدخول بنجاح باسم {bot.user}')
-
-@bot.command(name='setup')
-@commands.has_permissions(administrator=True)
-async def setup_panel(ctx):
-    embed = discord.Embed(
-        title="🎮 فارم 2-2-2",
-        description="اختر فريقك، أدخل اسمك، ثم اختر رولك وشخصيتك!",
-        color=discord.Color.gold()
-    )
-    embed.add_field(name="المشرف المسؤول", value=f"{ctx.author.mention}", inline=False)
-    embed.add_field(name="حالة الروم", value="🔒 مفتوح", inline=False)
-    
-    await ctx.send(embed=embed, view=FarmView())
-
-bot.run(TOKEN)
+    "مستر فانتاستيك (Mister Fantastic)": "

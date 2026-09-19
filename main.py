@@ -101,13 +101,11 @@ class CharacterSelect(discord.ui.Select):
         selected_char = self.values[0]
         user = interaction.user
 
-        # حذف اللاعب من أي رول سابق داخل نفس الفريق لمنع التسجيل في رولين
         for r_key in ["tank", "dps", "support"]:
             teams_data[self.team_key][r_key] = [
                 item for item in teams_data[self.team_key][r_key] if item["user"].id != user.id
             ]
 
-        # إضافة اللاعب للرول الجديد
         teams_data[self.team_key][self.role_key].append({"user": user, "char": selected_char})
 
         if farm_status["setup_message"]:
@@ -202,7 +200,7 @@ class FarmView(discord.ui.View):
         super().__init__(timeout=None)
         self.admin_name = admin_name
 
-    @discord.ui.button(label='الفريق الأول', style=discord.ButtonStyle.danger, emoji='🔴', custom_id="farm_team_one_btn_v3")
+    @discord.ui.button(label='الفريق الأول', style=discord.ButtonStyle.danger, emoji='🔴', custom_id="farm_team_one_btn_v4")
     async def team_one(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not farm_status["is_open"]:
             await interaction.response.send_message("🔒 عذراً، الفارم مغلق حالياً!", ephemeral=True)
@@ -212,7 +210,7 @@ class FarmView(discord.ui.View):
             return
         await interaction.response.send_modal(GameNameModal("team_1", self.admin_name))
 
-    @discord.ui.button(label='الفريق الثاني', style=discord.ButtonStyle.primary, emoji='🔵', custom_id="farm_team_two_btn_v3")
+    @discord.ui.button(label='الفريق الثاني', style=discord.ButtonStyle.primary, emoji='🔵', custom_id="farm_team_two_btn_v4")
     async def team_two(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not farm_status["is_open"]:
             await interaction.response.send_message("🔒 عذراً، الفارم مغلق حالياً!", ephemeral=True)
@@ -222,7 +220,7 @@ class FarmView(discord.ui.View):
             return
         await interaction.response.send_modal(GameNameModal("team_2", self.admin_name))
 
-    @discord.ui.button(label='إدارة الفارم (قفل/فتح)', style=discord.ButtonStyle.gray, emoji='⚙️', custom_id="farm_admin_control_btn_v3")
+    @discord.ui.button(label='إدارة الفارم (قفل/فتح)', style=discord.ButtonStyle.gray, emoji='⚙️', custom_id="farm_admin_control_btn_v4")
     async def admin_control(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not has_admin_role(interaction.user):
             await interaction.response.send_message("❌ ليس لديك صلاحية!", ephemeral=True)
@@ -277,5 +275,31 @@ async def setup_panel(ctx):
         farm_status["setup_message"] = msg
     finally:
         is_setting_up = False
+
+@bot.command(name='كشف')
+async def kashf_panel(ctx):
+    if not has_admin_role(ctx.author) and not ctx.author.guild_permissions.administrator:
+        await ctx.send("❌ لا تمتلك صلاحية استخدام هذا الأمر.")
+        return
+
+    # حذف الرسالة القديمة إن وجدت لتجنب تكرار اللوحات القديمة
+    if farm_status["setup_message"]:
+        try:
+            await farm_status["setup_message"].delete()
+        except Exception:
+            pass
+
+    # حذف أمر !كشف نفسه ليبقى الشات نظيفاً
+    try:
+        await ctx.message.delete()
+    except Exception:
+        pass
+
+    admin_name = ctx.author.display_name
+    embed = update_main_embed(admin_name)
+    
+    # إرسال اللوحة في أحدث رسالة بالأسفل
+    msg = await ctx.send(embed=embed, view=FarmView(admin_name))
+    farm_status["setup_message"] = msg
 
 bot.run(TOKEN)

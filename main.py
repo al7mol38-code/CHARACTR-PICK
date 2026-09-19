@@ -6,15 +6,21 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 
 intents = discord.Intents.default()
 intents.message_content = True
-intents.voice_states = True  # مهم جداً للتحقق من الروم الصوتي
+intents.voice_states = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# حالة الفارم العامة (مفتوح بشكل افتراضي)
+# حالة الفارم العامة
 farm_status = {
-    "is_open": True
+    "is_open": True,
+    "setup_message": None  
 }
 
-# قائمة آيديات المشرفين المسموح لهم بفتح وقفل الفارم
+# هيكل تخزين بيانات الفريقين
+teams_data = {
+    "team_1": {"tank": [], "dps": [], "support": []},
+    "team_2": {"tank": [], "dps": [], "support": []}
+}
+
 ALLOWED_ADMINS = [
     1533463601908809748, 1533463600381956118, 1533463595831001339, 
     1533463598129479690, 1533463596812599489, 1534471459739668570, 
@@ -22,7 +28,7 @@ ALLOWED_ADMINS = [
     1533463571634323579, 1533463570564649121, 1533463569683845160
 ]
 
-# 1. شخصيات التانك (Tanks)
+# 1. روابط التانك الصحيحة
 TANK_IMAGES = {
     "كابتن أمريكا (Captain America)": "https://cdn.discordapp.com/attachments/1550919639532306482/1550920249812058172/video_60.mp4?ex=6ab0168a&is=6aaec50a&hm=71c7b6d6c2165af7c9c051e746ecbb841abb1a6e7391ef656ea534d49c664573&",
     "بروس بانر / هالك (Bruce Banner / Hulk)": "https://cdn.discordapp.com/attachments/1550919639532306482/1550920762125197382/video_48.mp4?ex=6ab01704&is=6aaec584&hm=b6a5b0644821f24d84c2e02fd2cbb0ba443c5b580bb2d0ac3c864c9a0aab919f&",
@@ -37,7 +43,7 @@ TANK_IMAGES = {
     "أنجيلا (Angela)": "https://cdn.discordapp.com/attachments/1533463914816471221/1550890826966634537/993BAF10-AEFA-4277-9D1D-4725F41D0F79.gif?ex=6aaffb23&is=6aaea9a3&hm=c65af04f1f6814ef8a7319da0a353bf6d2138f46fca6a6fd88029445575fb55f&"
 }
 
-# 2. شخصيات مسبب الضرر (DPS)
+# 2. روابط الـ DPS الصحيحة
 DPS_IMAGES = {
     "الرجل العنكبوت (Spider-Man)": "https://cdn.discordapp.com/attachments/1533463914816471221/1550890983720230922/4F6FCEB7-ACD6-4D8F-9235-40C4540F6C96.gif?ex=6aaffb48&is=6aaea9c8&hm=efcedcc4d31d9784fc9ec4b378f37881c69a81cc7d0b8c0f4439b17d6cd86a8e&",
     "الرجل الحديدي (Iron Man)": "https://cdn.discordapp.com/attachments/1533463914816471221/1550890921971679232/961C23DF-DA88-4586-85F1-26145781AA71.gif?ex=6aaffb39&is=6aaea9b9&hm=f8aac07d12d3fc92e335d995429b52f322b67e056e9e13347ae151e1d80019e2&",
@@ -69,7 +75,7 @@ DPS_IMAGES = {
     "إلسا بلودستون (Elsa Bloodstone)": "https://cdn.discordapp.com/attachments/1533463914816471221/1550890873099915335/4C7FF137-6C5D-4FF5-9EF9-101CB54960C5.gif?ex=6aaffb2e&is=6aaea9ae&hm=39a21a586cb01479c94056204814c21a0c866c1f15f231428c0bd62cab13069b&"
 }
 
-# 3. شخصيات السبورت (Support)
+# 3. روابط السبورت / الهيلر الصحيحة
 SUPPORT_IMAGES = {
     "ديدبول": "https://cdn.discordapp.com/attachments/1533463914816471221/1550890829974085662/B6124A6B-495E-4305-984E-47FA5B7F467A.gif",
     "المرأة الخفية": "https://cdn.discordapp.com/attachments/1533463914816471221/1550890830485528596/47995E8B-47F8-4E7D-A6A7-BD0FCC4F933D.gif",
@@ -83,77 +89,102 @@ SUPPORT_IMAGES = {
     "آدم وارلوك": "https://cdn.discordapp.com/attachments/1533463914816471221/1550890983720230922/4F6FCEB7-ACD6-4D8F-9235-40C4540F6C96.gif"
 }
 
-# قوائم الاختيار (Select Menus)
-class TankSelect(discord.ui.Select):
-    def __init__(self):
-        options = [discord.SelectOption(label=name[:100]) for name in TANK_IMAGES.keys()]
-        super().__init__(placeholder="اختر شخصية التانك...", min_values=1, max_values=1, options=options)
+# دالة لتحديث شكل القائمة الأساسية مع منشن اللاعبين والعدد
+def update_main_embed(admin_name):
+    embed = discord.Embed(
+        title="🎮 فارم 2-2-2",
+        description="2 هيلر - 2 دي بي اس - 2 تانك لكل فريق (فريقين)\n\nاختر فريقك ثم رولك ثم شخصيتك",
+        color=discord.Color.gold()
+    )
+    embed.add_field(name="المشرف المسؤول", value=f"⭐ {admin_name}", inline=False)
+    status_str = "🔒 مفتوح" if farm_status["is_open"] else "🔒 مغلق"
+    embed.add_field(name="حالة الروم", value=status_str, inline=False)
+
+    # الفريق الأول
+    t1 = teams_data["team_1"]
+    t1_tank_str = "\n".join([f"{item['user'].mention} - {item['char']}" for item in t1["tank"]]) if t1["tank"] else "لا يوجد"
+    t1_dps_str = "\n".join([f"{item['user'].mention} - {item['char']}" for item in t1["dps"]]) if t1["dps"] else "لا يوجد"
+    t1_sup_str = "\n".join([f"{item['user'].mention} - {item['char']}" for item in t1["support"]]) if t1["support"] else "لا يوجد"
+
+    embed.add_field(name="🔴 الفريق الاول", value=f"🛡️ تانك ({len(t1['tank'])}/2)\n{t1_tank_str}\n⚔️ دي بي اس ({len(t1['dps'])}/2)\n{t1_dps_str}\n💉 هيلر ({len(t1['support'])}/2)\n{t1_sup_str}", inline=False)
+
+    # الفريق الثاني
+    t2 = teams_data["team_2"]
+    t2_tank_str = "\n".join([f"{item['user'].mention} - {item['char']}" for item in t2["tank"]]) if t2["tank"] else "لا يوجد"
+    t2_dps_str = "\n".join([f"{item['user'].mention} - {item['char']}" for item in t2["dps"]]) if t2["dps"] else "لا يوجد"
+    t2_sup_str = "\n".join([f"{item['user'].mention} - {item['char']}" for item in t2["support"]]) if t2["support"] else "لا يوجد"
+
+    embed.add_field(name="🔵 الفريق الثاني", value=f"🛡️ تانك ({len(t2['tank'])}/2)\n{t2_tank_str}\n⚔️ دي بي اس ({len(t2['dps'])}/2)\n{t2_dps_str}\n💉 هيلر ({len(t2['support'])}/2)\n{t2_sup_str}", inline=False)
+
+    return embed
+
+class CharacterSelect(discord.ui.Select):
+    def __init__(self, char_dict, team_key, role_key, admin_name):
+        self.char_dict = char_dict
+        self.team_key = team_key
+        self.role_key = role_key
+        self.admin_name = admin_name
+        options = [discord.SelectOption(label=name[:100]) for name in char_dict.keys()]
+        super().__init__(placeholder="اختر شخصيتك...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
-        selected = self.values[0]
-        url = TANK_IMAGES.get(selected)
-        embed = discord.Embed(title=f"لقد اخترت تانك: {selected}", color=discord.Color.blue())
-        if url: embed.set_image(url=url)
+        selected_char = self.values[0]
+        user = interaction.user
+        url = self.char_dict.get(selected_char)
+
+        # إضافة اللاعب للقائمة
+        teams_data[self.team_key][self.role_key].append({"user": user, "char": selected_char})
+
+        # تحديث الرسالة الأساسية في الشات
+        if farm_status["setup_message"]:
+            new_embed = update_main_embed(self.admin_name)
+            await farm_status["setup_message"].edit(embed=new_embed)
+
+        # إرسال رسالة تأكيد مع صورة الشخصية المختارة بشكل صحيح
+        embed = discord.Embed(title=f"✅ تم تسجيلك بنجاح بشخصية: {selected_char}", color=discord.Color.green())
+        if url:
+            embed.set_image(url=url)
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-class TankView(discord.ui.View):
-    def __init__(self):
-        super().__init__()
-        self.add_item(TankSelect())
-
-class DPSSelect(discord.ui.Select):
-    def __init__(self):
-        options = [discord.SelectOption(label=name[:100]) for name in DPS_IMAGES.keys()]
-        super().__init__(placeholder="اختر شخصية الـ DPS...", min_values=1, max_values=1, options=options)
-
-    async def callback(self, interaction: discord.Interaction):
-        selected = self.values[0]
-        url = DPS_IMAGES.get(selected)
-        embed = discord.Embed(title=f"لقد اخترت دي بي إس: {selected}", color=discord.Color.red())
-        if url: embed.set_image(url=url)
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
-class DPSView(discord.ui.View):
-    def __init__(self):
-        super().__init__()
-        self.add_item(DPSSelect())
-
-class SupportSelect(discord.ui.Select):
-    def __init__(self):
-        options = [discord.SelectOption(label=name[:100]) for name in SUPPORT_IMAGES.keys()]
-        super().__init__(placeholder="اختر شخصية السبورت...", min_values=1, max_values=1, options=options)
-
-    async def callback(self, interaction: discord.Interaction):
-        selected = self.values[0]
-        url = SUPPORT_IMAGES.get(selected)
-        embed = discord.Embed(title=f"لقد اخترت سبورت: {selected}", color=discord.Color.green())
-        if url: embed.set_image(url=url)
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
-class SupportView(discord.ui.View):
-    def __init__(self):
-        super().__init__()
-        self.add_item(SupportSelect())
-
-# أزرار اختيار الرول بعد إدخال الاسم
 class RoleChoiceView(discord.ui.View):
-    def __init__(self):
+    def __init__(self, team_key, admin_name):
         super().__init__()
+        self.team_key = team_key
+        self.admin_name = admin_name
 
     @discord.ui.button(label='تانك', style=discord.ButtonStyle.primary, emoji='🛡️')
     async def tank_choice(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("اختر شخصية التانك الخاصة بك:", view=TankView(), ephemeral=True)
+        if len(teams_data[self.team_key]["tank"]) >= 2:
+            await interaction.response.send_message("❌ عذراً، رول التانك مكتمل في هذا الفريق!", ephemeral=True)
+            return
+        view = discord.ui.View()
+        view.add_item(CharacterSelect(TANK_IMAGES, self.team_key, "tank", self.admin_name))
+        await interaction.response.send_message("اختر شخصية التانك:", view=view, ephemeral=True)
 
     @discord.ui.button(label='دي بي إس', style=discord.ButtonStyle.danger, emoji='⚔️')
     async def dps_choice(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("اختر شخصية الـ DPS الخاصة بك:", view=DPSView(), ephemeral=True)
+        if len(teams_data[self.team_key]["dps"]) >= 2:
+            await interaction.response.send_message("❌ عذراً، رول الدي بي إس مكتمل في هذا الفريق!", ephemeral=True)
+            return
+        view = discord.ui.View()
+        view.add_item(CharacterSelect(DPS_IMAGES, self.team_key, "dps", self.admin_name))
+        await interaction.response.send_message("اختر شخصية الـ DPS:", view=view, ephemeral=True)
 
-    @discord.ui.button(label='سبورت', style=discord.ButtonStyle.success, emoji='💉')
+    @discord.ui.button(label='سبورت / هيلر', style=discord.ButtonStyle.success, emoji='💉')
     async def support_choice(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("اختر شخصية السبورت الخاصة بك:", view=SupportView(), ephemeral=True)
+        if len(teams_data[self.team_key]["support"]) >= 2:
+            await interaction.response.send_message("❌ عذراً، رول الهيلر مكتمل في هذا الفريق!", ephemeral=True)
+            return
+        view = discord.ui.View()
+        view.add_item(CharacterSelect(SUPPORT_IMAGES, self.team_key, "support", self.admin_name))
+        await interaction.response.send_message("اختر شخصية السبورت:", view=view, ephemeral=True)
 
-# نافذة إدخال الاسم (تم تعديل المثال ليصبح subaru)
 class GameNameModal(discord.ui.Modal, title='ادخل اسمك'):
+    def __init__(self, team_key, admin_name):
+        super().__init__()
+        self.team_key = team_key
+        self.admin_name = admin_name
+
     game_name = discord.ui.TextInput(
         label='اكتب اسمك في اللعبة',
         placeholder='subaru',
@@ -162,55 +193,47 @@ class GameNameModal(discord.ui.Modal, title='ادخل اسمك'):
     )
 
     async def on_submit(self, interaction: discord.Interaction):
-        name = self.game_name.value
         await interaction.response.send_message(
-            f'تم تسجيل اسمك: **{name}** بنجاح! الآن اختر رولك:',
-            view=RoleChoiceView(),
+            f'تم تسجيل اسمك: **{self.game_name.value}**. الآن اختر رولك:',
+            view=RoleChoiceView(self.team_key, self.admin_name),
             ephemeral=True
         )
 
-# الأزرار الرئيسية للفريق الأول والثاني + زر التحكم الإداري بالآيديات المحددة
 class FarmView(discord.ui.View):
-    def __init__(self):
+    def __init__(self, admin_name):
         super().__init__(timeout=None)
+        self.admin_name = admin_name
 
     @discord.ui.button(label='الفريق الاول', style=discord.ButtonStyle.danger, emoji='🔴', custom_id="team_one_btn")
     async def team_one(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not farm_status["is_open"]:
-            await interaction.response.send_message("🔒 عذراً، الفارم مغلق حالياً من قبل الإدارة!", ephemeral=True)
+            await interaction.response.send_message("🔒 عذراً، الفارم مغلق حالياً!", ephemeral=True)
             return
         if not interaction.user.voice:
-            await interaction.response.send_message("❌ يجب أن تكون في الروم الصوتي للمشاركة في الفارم!", ephemeral=True)
+            await interaction.response.send_message("❌ يجب أن تكون في روم صوتي!", ephemeral=True)
             return
-        await interaction.response.send_modal(GameNameModal())
+        await interaction.response.send_modal(GameNameModal("team_1", self.admin_name))
 
     @discord.ui.button(label='الفريق الثاني', style=discord.ButtonStyle.primary, emoji='🔵', custom_id="team_two_btn")
     async def team_two(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not farm_status["is_open"]:
-            await interaction.response.send_message("🔒 عذراً، الفارم مغلق حالياً من قبل الإدارة!", ephemeral=True)
+            await interaction.response.send_message("🔒 عذراً، الفارم مغلق حالياً!", ephemeral=True)
             return
         if not interaction.user.voice:
-            await interaction.response.send_message("❌ يجب أن تكون في الروم الصوتي للمشاركة في الفارم!", ephemeral=True)
+            await interaction.response.send_message("❌ يجب أن تكون في روم صوتي!", ephemeral=True)
             return
-        await interaction.response.send_modal(GameNameModal())
-
-    @discord.ui.button(label='تراجع', style=discord.ButtonStyle.secondary, custom_id="cancel_btn")
-    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("تم التراجع عن الاختيار.", ephemeral=True)
+        await interaction.response.send_modal(GameNameModal("team_2", self.admin_name))
 
     @discord.ui.button(label='إدارة الفارم (قفل/فتح)', style=discord.ButtonStyle.gray, emoji='⚙️', custom_id="admin_control_btn")
     async def admin_control(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id not in ALLOWED_ADMINS:
-            await interaction.response.send_message("❌ عذراً، لا تمتلك الصلاحية للتحكم في حالة الفارم!", ephemeral=True)
+            await interaction.response.send_message("❌ ليس لديك صلاحية!", ephemeral=True)
             return
         
         farm_status["is_open"] = not farm_status["is_open"]
-        status_text = "🔓 مفتوح" if farm_status["is_open"] else "🔒 مغلق"
-        await interaction.response.send_message(f"تم تغيير حالة الفارم بنجاح وأصبحت: **{status_text}**", ephemeral=True)
-
-@bot.event
-async def on_ready():
-    print(f'تم تسجيل الدخول بنجاح باسم {bot.user}')
+        if farm_status["setup_message"]:
+            await farm_status["setup_message"].edit(embed=update_main_embed(self.admin_name))
+        await interaction.response.send_message("تم تغيير حالة الفارم بنجاح.", ephemeral=True)
 
 @bot.command(name='setup')
 async def setup_panel(ctx):
@@ -218,14 +241,9 @@ async def setup_panel(ctx):
         await ctx.send("❌ لا تمتلك صلاحية استخدام هذا الأمر.")
         return
 
-    embed = discord.Embed(
-        title="🎮 فارم 2-2-2",
-        description="اختر فريقك، أدخل اسمك، ثم اختر رولك وشخصيتك!",
-        color=discord.Color.gold()
-    )
-    embed.add_field(name="المشرف المسؤول", value=f"{ctx.author.mention}", inline=False)
-    embed.add_field(name="حالة الروم", value="🔒 مفتوح", inline=False)
-    
-    await ctx.send(embed=embed, view=FarmView())
+    admin_name = ctx.author.display_name
+    embed = update_main_embed(admin_name)
+    msg = await ctx.send(embed=embed, view=FarmView(admin_name))
+    farm_status["setup_message"] = msg
 
 bot.run(TOKEN)

@@ -34,12 +34,17 @@ TANK_CHARS = [
     "دكتور سترينج", "جروت", "بيني باركر", "الشيء", "إيما فروست", "أنجيلا"
 ]
 
-# قائمة الـ DPS مجتمعة
-DPS_CHARS = [
+# قسم الـ DPS الأول
+DPS_CHARS_1 = [
     "الرجل العنكبوت", "الرجل الحديدي", "ولفيرين", "جين غراي (فينيكس)", 
     "ديدبول", "سايلوك", "ماجيك", "هيلا", "سكارليت ويتش", 
-    "المعاقب", "بليد", "النمر الأسود", "هاوك آي", "مون نايت", "ستار-لورد", "جندي الشتاء",
-    "الشعلة البشرية", "مستر فانتاستيك", "نامور", "ستورم", "القبضة الحديدية", "ديرديفيل"
+    "المعاقب", "بليد", "النمر الأسود", "هاوك آي", "مون نايت", "ستار-لورد", "جندي الشتاء"
+]
+
+# قسم الـ DPS الثاني
+DPS_CHARS_2 = [
+    "الشعلة البشرية", "مستر فانتاستيك", "نامور", "ستورم", 
+    "القبضة الحديدية", "فتاة السنجاب", "القطة السوداء", "سايكلوبس", "ديرديفيل", "إلسا بلودستون"
 ]
 
 # قائمة السبورت / الهيلر
@@ -96,10 +101,31 @@ class CharacterSelect(discord.ui.Select):
         teams_data[self.team_key][self.role_key].append({"user": user, "char": selected_char})
 
         if farm_status["setup_message"]:
-            new_embed = update_main_embed(self.admin_name)
-            await farm_status["setup_message"].edit(embed=new_embed)
+            try:
+                new_embed = update_main_embed(self.admin_name)
+                await farm_status["setup_message"].edit(embed=new_embed)
+            except Exception:
+                pass
 
         await interaction.response.send_message(f"✅ تم تسجيلك بنجاح بشخصية: **{selected_char}**", ephemeral=True)
+
+class DPSGroupSelectView(discord.ui.View):
+    def __init__(self, team_key, admin_name):
+        super().__init__()
+        self.team_key = team_key
+        self.admin_name = admin_name
+
+    @discord.ui.button(label='قائمة الـ DPS (1)', style=discord.ButtonStyle.danger, emoji='⚔️')
+    async def dps_group_1(self, interaction: discord.Interaction, button: discord.ui.Button):
+        view = discord.ui.View()
+        view.add_item(CharacterSelect(DPS_CHARS_1, self.team_key, "dps", self.admin_name))
+        await interaction.response.send_message("اختر من القائمة الأولى:", view=view, ephemeral=True)
+
+    @discord.ui.button(label='قائمة الـ DPS (2)', style=discord.ButtonStyle.danger, emoji='⚔️')
+    async def dps_group_2(self, interaction: discord.Interaction, button: discord.ui.Button):
+        view = discord.ui.View()
+        view.add_item(CharacterSelect(DPS_CHARS_2, self.team_key, "dps", self.admin_name))
+        await interaction.response.send_message("اختر من القائمة الثانية:", view=view, ephemeral=True)
 
 class RoleChoiceView(discord.ui.View):
     def __init__(self, team_key, admin_name):
@@ -133,9 +159,7 @@ class RoleChoiceView(discord.ui.View):
                 await interaction.response.send_message("❌ لقد قمت بالتسجيل في رول الدي بي إس مسبقاً!", ephemeral=True)
                 return
 
-        view = discord.ui.View()
-        view.add_item(CharacterSelect(DPS_CHARS, self.team_key, "dps", self.admin_name))
-        await interaction.response.send_message("اختر شخصية الـ DPS:", view=view, ephemeral=True)
+        await interaction.response.send_message("اختر مجموعة الـ DPS:", view=DPSGroupSelectView(self.team_key, self.admin_name), ephemeral=True)
 
     @discord.ui.button(label='سبورت / هيلر', style=discord.ButtonStyle.success, emoji='💉')
     async def support_choice(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -205,7 +229,10 @@ class FarmView(discord.ui.View):
         
         farm_status["is_open"] = not farm_status["is_open"]
         if farm_status["setup_message"]:
-            await farm_status["setup_message"].edit(embed=update_main_embed(self.admin_name))
+            try:
+                await farm_status["setup_message"].edit(embed=update_main_embed(self.admin_name))
+            except Exception:
+                pass
         await interaction.response.send_message("تم تغيير حالة الفارم بنجاح.", ephemeral=True)
 
 @bot.command(name='setup')
@@ -214,7 +241,7 @@ async def setup_panel(ctx):
         await ctx.send("❌ لا تمتلك صلاحية استخدام هذا الأمر.")
         return
 
-    # تصفير البيانات بالكامل
+    # تصفير البيانات بالكامل عند كتابة السيت أب
     global teams_data
     teams_data = {
         "team_1": {"tank": [], "dps": [], "support": []},
@@ -222,22 +249,17 @@ async def setup_panel(ctx):
     }
     farm_status["is_open"] = True
 
-    # حذف الرسالة القديمة المسجلة إن وجدت لمنع تكرار اللوحات
+    # محاولة حذف الرسالة السابقة إن وجدت لتفادي التكرار
     if farm_status["setup_message"]:
         try:
             await farm_status["setup_message"].delete()
         except Exception:
             pass
 
-    # حذف أمر السيت أب الذي كتبه المشرف لتنظيف الشات
-    try:
-        await ctx.message.delete()
-    except Exception:
-        pass
-
     admin_name = ctx.author.display_name
     embed = update_main_embed(admin_name)
     
+    # إرسال لوحة واحدة فقط جديدة
     msg = await ctx.send(embed=embed, view=FarmView(admin_name))
     farm_status["setup_message"] = msg
 

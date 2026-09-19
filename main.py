@@ -34,17 +34,12 @@ TANK_CHARS = [
     "دكتور سترينج", "جروت", "بيني باركر", "الشيء", "إيما فروست", "أنجيلا"
 ]
 
-# قسم الـ DPS الأول
-DPS_CHARS_1 = [
+# قائمة الـ DPS مجتمعة بشكل لا يتجاوز الحد الأقصى (أقل من 25 خياراً لضمان عدم حدوث خطأ ديسكورد)
+DPS_CHARS = [
     "الرجل العنكبوت", "الرجل الحديدي", "ولفيرين", "جين غراي (فينيكس)", 
     "ديدبول", "سايلوك", "ماجيك", "هيلا", "سكارليت ويتش", 
-    "المعاقب", "بليد", "النمر الأسود", "هاوك آي", "مون نايت", "ستار-لورد", "جندي الشتاء"
-]
-
-# قسم الـ DPS الثاني
-DPS_CHARS_2 = [
-    "الشعلة البشرية", "مستر فانتاستيك", "نامور", "ستورم", 
-    "القبضة الحديدية", "فتاة السنجاب", "القطة السوداء", "سايكلوبس", "ديرديفيل", "إلسا بلودستون"
+    "المعاقب", "بليد", "النمر الأسود", "هاوك آي", "مون نايت", "ستار-لورد", "جندي الشتاء",
+    "الشعلة البشرية", "مستر فانتاستيك", "نامور", "ستورم", "القبضة الحديدية", "ديرديفيل"
 ]
 
 # قائمة السبورت / الهيلر
@@ -106,24 +101,6 @@ class CharacterSelect(discord.ui.Select):
 
         await interaction.response.send_message(f"✅ تم تسجيلك بنجاح بشخصية: **{selected_char}**", ephemeral=True)
 
-class DPSGroupSelectView(discord.ui.View):
-    def __init__(self, team_key, admin_name):
-        super().__init__()
-        self.team_key = team_key
-        self.admin_name = admin_name
-
-    @discord.ui.button(label='قائمة الـ DPS (1)', style=discord.ButtonStyle.danger, emoji='⚔️')
-    async def dps_group_1(self, interaction: discord.Interaction, button: discord.ui.Button):
-        view = discord.ui.View()
-        view.add_item(CharacterSelect(DPS_CHARS_1, self.team_key, "dps", self.admin_name))
-        await interaction.response.send_message("اختر من القائمة الأولى:", view=view, ephemeral=True)
-
-    @discord.ui.button(label='قائمة الـ DPS (2)', style=discord.ButtonStyle.danger, emoji='⚔️')
-    async def dps_group_2(self, interaction: discord.Interaction, button: discord.ui.Button):
-        view = discord.ui.View()
-        view.add_item(CharacterSelect(DPS_CHARS_2, self.team_key, "dps", self.admin_name))
-        await interaction.response.send_message("اختر من القائمة الثانية:", view=view, ephemeral=True)
-
 class RoleChoiceView(discord.ui.View):
     def __init__(self, team_key, admin_name):
         super().__init__()
@@ -156,7 +133,9 @@ class RoleChoiceView(discord.ui.View):
                 await interaction.response.send_message("❌ لقد قمت بالتسجيل في رول الدي بي إس مسبقاً!", ephemeral=True)
                 return
 
-        await interaction.response.send_message("اختر مجموعة الـ DPS:", view=DPSGroupSelectView(self.team_key, self.admin_name), ephemeral=True)
+        view = discord.ui.View()
+        view.add_item(CharacterSelect(DPS_CHARS, self.team_key, "dps", self.admin_name))
+        await interaction.response.send_message("اختر شخصية الـ DPS:", view=view, ephemeral=True)
 
     @discord.ui.button(label='سبورت / هيلر', style=discord.ButtonStyle.success, emoji='💉')
     async def support_choice(self, interaction: discord.Interaction, button: discord.ui.Button):

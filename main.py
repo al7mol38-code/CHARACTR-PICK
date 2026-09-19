@@ -222,15 +222,22 @@ async def setup_panel(ctx):
     }
     farm_status["is_open"] = True
 
-    admin_name = ctx.author.display_name
-    embed = update_main_embed(admin_name)
-    
-    # حذف رسالة الأمر القديمة إن أمكن أو إرسال لوحة واحدة فقط لمنع التكرار
+    # حذف الرسالة القديمة المسجلة إن وجدت لمنع تكرار اللوحات
+    if farm_status["setup_message"]:
+        try:
+            await farm_status["setup_message"].delete()
+        except Exception:
+            pass
+
+    # حذف أمر السيت أب الذي كتبه المشرف لتنظيف الشات
     try:
         await ctx.message.delete()
     except Exception:
         pass
 
+    admin_name = ctx.author.display_name
+    embed = update_main_embed(admin_name)
+    
     msg = await ctx.send(embed=embed, view=FarmView(admin_name))
     farm_status["setup_message"] = msg
 

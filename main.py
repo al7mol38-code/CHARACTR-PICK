@@ -34,7 +34,7 @@ TANK_CHARS = [
     "دكتور سترينج", "جروت", "بيني باركر", "الشيء", "إيما فروست", "أنجيلا"
 ]
 
-# قائمة الـ DPS مجتمعة بشكل لا يتجاوز الحد الأقصى (أقل من 25 خياراً لضمان عدم حدوث خطأ ديسكورد)
+# قائمة الـ DPS مجتمعة
 DPS_CHARS = [
     "الرجل العنكبوت", "الرجل الحديدي", "ولفيرين", "جين غراي (فينيكس)", 
     "ديدبول", "سايلوك", "ماجيك", "هيلا", "سكارليت ويتش", 
@@ -214,7 +214,7 @@ async def setup_panel(ctx):
         await ctx.send("❌ لا تمتلك صلاحية استخدام هذا الأمر.")
         return
 
-    # تصفير الأسماء والفرق بالكامل عند تنفيذ أمر السيت أب
+    # تصفير البيانات بالكامل
     global teams_data
     teams_data = {
         "team_1": {"tank": [], "dps": [], "support": []},
@@ -224,6 +224,13 @@ async def setup_panel(ctx):
 
     admin_name = ctx.author.display_name
     embed = update_main_embed(admin_name)
+    
+    # حذف رسالة الأمر القديمة إن أمكن أو إرسال لوحة واحدة فقط لمنع التكرار
+    try:
+        await ctx.message.delete()
+    except Exception:
+        pass
+
     msg = await ctx.send(embed=embed, view=FarmView(admin_name))
     farm_status["setup_message"] = msg
 

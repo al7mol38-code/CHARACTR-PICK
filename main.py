@@ -21,11 +21,12 @@ teams_data = {
     "team_2": {"tank": [], "dps": [], "support": []}
 }
 
-ALLOWED_ADMINS = [
-    1533463601908809748, 1533463600381956118, 1533463595831001339, 
-    1533463598129479690, 1533463596812599489, 1534471459739668570, 
-    1541351616907583560, 1533463592265977886, 1533463593201307780, 
-    1533463571634323579, 1533463570564649121, 1533463569683845160
+# أيدي الرتب المسموح لها بالإدارة
+ALLOWED_ROLE_IDS = [
+    1533463601908809748, 1533463600381956118, 1534471459739668570, 
+    1533463598129479690, 1533463596812599489, 1533463595831001339, 
+    1541351616907583560, 1533463592265977886, 1533463570564649121, 
+    1533463569683845160
 ]
 
 # قائمة أسماء التانك
@@ -80,6 +81,13 @@ def update_main_embed(admin_name):
 
     return embed
 
+def has_admin_role(member):
+    if not isinstance(member, discord.Member):
+        return False
+    if member.guild_permissions.administrator:
+        return True
+    return any(role.id in ALLOWED_ROLE_IDS for role in member.roles)
+
 class CharacterSelect(discord.ui.Select):
     def __init__(self, char_list, team_key, role_key, admin_name):
         self.char_list = char_list
@@ -93,13 +101,13 @@ class CharacterSelect(discord.ui.Select):
         selected_char = self.values[0]
         user = interaction.user
 
-        # حذف اللاعب من أي رول سابق داخل نفس الفريق لمنع تكرار التسجيل برولين
+        # حذف اللاعب من أي رول سابق داخل نفس الفريق لمنع التسجيل في رولين
         for r_key in ["tank", "dps", "support"]:
             teams_data[self.team_key][r_key] = [
                 item for item in teams_data[self.team_key][r_key] if item["user"].id != user.id
             ]
 
-        # إضافة اللاعب للرول الجديد المطلوب
+        # إضافة اللاعب للرول الجديد
         teams_data[self.team_key][self.role_key].append({"user": user, "char": selected_char})
 
         if farm_status["setup_message"]:
@@ -109,7 +117,7 @@ class CharacterSelect(discord.ui.Select):
             except Exception:
                 pass
 
-        await interaction.response.send_message(f"✅ تم تسجيلك بنجاح بشخصية: **{selected_char}** (وتم تحديث رولك تلقائياً إذا كنت مسجلاً مسبقاً).", ephemeral=True)
+        await interaction.response.send_message(f"✅ تم تسجيلك بنجاح بشخصية: **{selected_char}** (وتم تحديث رولك تلقائياً).", ephemeral=True)
 
 class DPSGroupSelectView(discord.ui.View):
     def __init__(self, team_key, admin_name):
@@ -194,7 +202,7 @@ class FarmView(discord.ui.View):
         super().__init__(timeout=None)
         self.admin_name = admin_name
 
-    @discord.ui.button(label='الفريق الأول', style=discord.ButtonStyle.danger, emoji='🔴', custom_id="farm_team_one_btn")
+    @discord.ui.button(label='الفريق الأول', style=discord.ButtonStyle.danger, emoji='🔴', custom_id="farm_team_one_btn_v3")
     async def team_one(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not farm_status["is_open"]:
             await interaction.response.send_message("🔒 عذراً، الفارم مغلق حالياً!", ephemeral=True)
@@ -204,7 +212,7 @@ class FarmView(discord.ui.View):
             return
         await interaction.response.send_modal(GameNameModal("team_1", self.admin_name))
 
-    @discord.ui.button(label='الفريق الثاني', style=discord.ButtonStyle.primary, emoji='🔵', custom_id="farm_team_two_btn")
+    @discord.ui.button(label='الفريق الثاني', style=discord.ButtonStyle.primary, emoji='🔵', custom_id="farm_team_two_btn_v3")
     async def team_two(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not farm_status["is_open"]:
             await interaction.response.send_message("🔒 عذراً، الفارم مغلق حالياً!", ephemeral=True)
@@ -214,9 +222,9 @@ class FarmView(discord.ui.View):
             return
         await interaction.response.send_modal(GameNameModal("team_2", self.admin_name))
 
-    @discord.ui.button(label='إدارة الفارم (قفل/فتح)', style=discord.ButtonStyle.gray, emoji='⚙️', custom_id="farm_admin_control_btn")
+    @discord.ui.button(label='إدارة الفارم (قفل/فتح)', style=discord.ButtonStyle.gray, emoji='⚙️', custom_id="farm_admin_control_btn_v3")
     async def admin_control(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id not in ALLOWED_ADMINS:
+        if not has_admin_role(interaction.user):
             await interaction.response.send_message("❌ ليس لديك صلاحية!", ephemeral=True)
             return
         
@@ -231,36 +239,43 @@ class FarmView(discord.ui.View):
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user.name}')
-    # تسجيل الـ View بشكل دائم لمنع مشاكل تفاعل الأزرار عند إعادة التشغيل
+    view = FarmView("مشرف")
     if not any(isinstance(v, FarmView) for v in bot.persistent_views):
-        bot.add_view(FarmView("مشرف"))
+        bot.add_view(view)
+
+is_setting_up = False
 
 @bot.command(name='setup')
 async def setup_panel(ctx):
-    if ctx.author.id not in ALLOWED_ADMINS and not ctx.author.guild_permissions.administrator:
+    global is_setting_up
+    if is_setting_up:
+        return
+
+    if not has_admin_role(ctx.author) and not ctx.author.guild_permissions.administrator:
         await ctx.send("❌ لا تمتلك صلاحية استخدام هذا الأمر.")
         return
 
-    # تصفير البيانات عند عمل سيت أب جديد
-    global teams_data
-    teams_data = {
-        "team_1": {"tank": [], "dps": [], "support": []},
-        "team_2": {"tank": [], "dps": [], "support": []}
-    }
-    farm_status["is_open"] = True
+    is_setting_up = True
+    try:
+        global teams_data
+        teams_data = {
+            "team_1": {"tank": [], "dps": [], "support": []},
+            "team_2": {"tank": [], "dps": [], "support": []}
+        }
+        farm_status["is_open"] = True
 
-    # حذف الرسالة القديمة إن وجدت لمنع التكرار
-    if farm_status["setup_message"]:
-        try:
-            await farm_status["setup_message"].delete()
-        except Exception:
-            pass
+        if farm_status["setup_message"]:
+            try:
+                await farm_status["setup_message"].delete()
+            except Exception:
+                pass
 
-    admin_name = ctx.author.display_name
-    embed = update_main_embed(admin_name)
-    
-    # إرسال رسالة واحدة نظيفة فقط
-    msg = await ctx.send(embed=embed, view=FarmView(admin_name))
-    farm_status["setup_message"] = msg
+        admin_name = ctx.author.display_name
+        embed = update_main_embed(admin_name)
+        
+        msg = await ctx.send(embed=embed, view=FarmView(admin_name))
+        farm_status["setup_message"] = msg
+    finally:
+        is_setting_up = False
 
 bot.run(TOKEN)

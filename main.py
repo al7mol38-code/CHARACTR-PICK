@@ -29,28 +29,32 @@ ALLOWED_ROLE_IDS = [
     1533463569683845160
 ]
 
-# قائمة أسماء التانك
+# قائمة التانك
 TANK_CHARS = [
-    "كابتن أمريكا", "هالك", "فينوم", "ثور", "ماجنيتو", 
-    "دكتور سترينج", "جروت", "بيني باركر", "الشيء", "إيما فروست", "أنجيلا"
+    "انجيلا", "هالك", "كابتن أمريكا", "ديدبول", "ديفل داينو", 
+    "دكتور سترينج", "إيما فروست", "قروت", "ماقينتو", "بيني باركر", 
+    "روق", "ذا هود", "ذا ثينق", "ثور", "فينوم"
 ]
 
 # قسم الـ DPS الأول
 DPS_CHARS_1 = [
-    "الرجل العنكبوت", "الرجل الحديدي", "ولفيرين", "جين غراي (فينيكس)", 
-    "ديدبول", "سايلوك", "ماجيك", "هيلا", "سكارليت ويتش", 
-    "المعاقب", "بليد", "النمر الأسود", "هاوك آي", "مون نايت", "ستار-لورد", "جندي الشتاء"
+    "بلاك كات", "بلاك بانثر", "بلاك ويدو", "بليد", "سايكلوبس", 
+    "ديرديفيل", "ديدبول", "اليسا بلودستون", "قور", "هوكاي", 
+    "هيلا", "هيومن تورش", "ايرون فيست", "ايرون مان"
 ]
 
 # قسم الـ DPS الثاني
 DPS_CHARS_2 = [
-    "الشعلة البشرية", "مستر فانتاستيك", "نامور", "ستورم", 
-    "القبضة الحديدية", "فتاة السنجاب", "القطة السوداء", "سايكلوبس", "ديرديفيل", "إلسا بلودستون"
+    "ماجيك", "مستر فانتاستيك", "مون نايت", "نامور", "فينيكس", 
+    "سايلوك", "سكارليت ويتش", "سبايدر مان", "سكويرل قيرل", 
+    "ستار لورد", "ستورم", "بونشر", "وينتر سولجر", "ولفرين"
 ]
 
-# قائمة السبورت / الهيلر
+# قائمة السبورت / الهيلر المحدثة
 SUPPORT_CHARS = [
-    "لونا سنو", "لوكي", "مانتس", "راكت", "وايت فوكس", "جوبيلي", "آدم وارلوك"
+    "آدم", "كلوك اند داقر", "ديدبول", "قامبت", "انفزبل ومن", 
+    "جيف", "جوبلي", "لوكي", "لونا", "مانتس", 
+    "روكيت راكون", "اولترون", "وايت فوكس"
 ]
 
 def update_main_embed(admin_name):
@@ -200,7 +204,7 @@ class FarmView(discord.ui.View):
         super().__init__(timeout=None)
         self.admin_name = admin_name
 
-    @discord.ui.button(label='الفريق الأول', style=discord.ButtonStyle.danger, emoji='🔴', custom_id="farm_team_one_btn_v5")
+    @discord.ui.button(label='الفريق الأول', style=discord.ButtonStyle.danger, emoji='🔴', custom_id="farm_team_one_btn_v10")
     async def team_one(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not farm_status["is_open"]:
             await interaction.response.send_message("🔒 عذراً، الفارم مغلق حالياً!", ephemeral=True)
@@ -210,7 +214,7 @@ class FarmView(discord.ui.View):
             return
         await interaction.response.send_modal(GameNameModal("team_1", self.admin_name))
 
-    @discord.ui.button(label='الفريق الثاني', style=discord.ButtonStyle.primary, emoji='🔵', custom_id="farm_team_two_btn_v5")
+    @discord.ui.button(label='الفريق الثاني', style=discord.ButtonStyle.primary, emoji='🔵', custom_id="farm_team_two_btn_v10")
     async def team_two(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not farm_status["is_open"]:
             await interaction.response.send_message("🔒 عذراً، الفارم مغلق حالياً!", ephemeral=True)
@@ -220,7 +224,7 @@ class FarmView(discord.ui.View):
             return
         await interaction.response.send_modal(GameNameModal("team_2", self.admin_name))
 
-    @discord.ui.button(label='إدارة الفارم (قفل/فتح)', style=discord.ButtonStyle.gray, emoji='⚙️', custom_id="farm_admin_control_btn_v5")
+    @discord.ui.button(label='إدارة الفارم (قفل/فتح)', style=discord.ButtonStyle.gray, emoji='⚙️', custom_id="farm_admin_control_btn_v10")
     async def admin_control(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not has_admin_role(interaction.user):
             await interaction.response.send_message("❌ ليس لديك صلاحية!", ephemeral=True)
@@ -233,6 +237,32 @@ class FarmView(discord.ui.View):
             except Exception:
                 pass
         await interaction.response.send_message("تم تغيير حالة الفارم بنجاح.", ephemeral=True)
+
+    @discord.ui.button(label='بدء الفارم', style=discord.ButtonStyle.success, emoji='🚀', custom_id="farm_start_action_btn_v10")
+    async def start_farm_action(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not has_admin_role(interaction.user):
+            await interaction.response.send_message("❌ ليس لديك صلاحية!", ephemeral=True)
+            return
+
+        # جمع كل المستخدمين المسجلين في الفريقين (بدون تكرار لو شخص سجل بالغلط)
+        all_users = set()
+        for team_key in ["team_1", "team_2"]:
+            for role_key in ["tank", "dps", "support"]:
+                for item in teams_data[team_key][role_key]:
+                    all_users.add(item["user"])
+
+        if not all_users:
+            await interaction.response.send_message("⚠️ لا يوجد أي لاعب مسجل في الفرق حالياً!", ephemeral=True)
+            return
+
+        mentions_str = " ".join([user.mention for user in all_users])
+        message_content = (
+            f"{mentions_str}\n\n"
+            "**بدء الفارم ونتمنى من الجميع الاحترام والالتزام بتعليمات المنظم ونتمنى لكم وقت ممتع**"
+        )
+
+        await interaction.channel.send(message_content)
+        await interaction.response.send_message("✅ تم إرسال رسالة بدء الفارم ومنشن المسجلين بنجاح.", ephemeral=True)
 
 @bot.event
 async def on_ready():
@@ -310,7 +340,6 @@ async def remove_user(ctx, member: discord.Member = None):
         return
 
     removed = False
-    # البحث عن العضو في الفريقين وحذفه من أي رول مسجل فيه
     for team_key in ["team_1", "team_2"]:
         for role_key in ["tank", "dps", "support"]:
             initial_len = len(teams_data[team_key][role_key])
@@ -321,7 +350,6 @@ async def remove_user(ctx, member: discord.Member = None):
                 removed = True
 
     if removed:
-        # تحديث اللوحة الأساسية إذا كانت موجودة
         if farm_status["setup_message"]:
             try:
                 admin_name = ctx.author.display_name
@@ -332,7 +360,6 @@ async def remove_user(ctx, member: discord.Member = None):
     else:
         await ctx.send(f"⚠️ العضو {member.mention} غير مسجل في أي فريق أساساً.")
 
-    # مسح أمر المشرف ليبقى الشات نظيفاً
     try:
         await ctx.message.delete()
     except Exception:
